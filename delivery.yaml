@@ -1,0 +1,31 @@
+version: "2017-09-20"
+pipeline:
+- id: not-process
+- id: Acceptance-Tests
+  process: microservice_standard_test
+  config:
+    apply_manifests:
+      env:
+        TARGET: the-target
+        APPLICATION: acceptance-app
+        VERSION: "#{CDP_BUILD_VERSION}"
+        DEPLOYMENT_TIMEOUT: 2m
+- id: deploy-test
+  process: microservice_standard_deployment
+  config:
+    apply_permanent_resources:
+      env:
+        APPLICATION: test-app
+        VERSION: "#{CDP_BUILD_VERSION}"
+        DEPLOYMENT_TIMEOUT: 3m
+        DB_USER: writer
+- id: deploy-prod
+  process: microservice_standard_deployment
+  config:
+    apply_permanent_resources:
+      env:
+        APPLICATION: prod-app
+        VERSION: "#{CDP_BUILD_VERSION}"
+        IMAGE_VERSION: "#{CDP_BUILD_VERSION}"
+        DEPLOYMENT_TIMEOUT: 10m
+        DB_USER: writer

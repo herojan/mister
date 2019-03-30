@@ -1,0 +1,7 @@
+DEPLOYMENT
+
+{{{ TARGET }}}
+{{{ APPLICATION }}}
+{{{ VERSION }}}
+{{{ DEPLOYMENT_TIMEOUT }}}
+{{{ DB_USER }}}

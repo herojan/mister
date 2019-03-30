@@ -1,0 +1,7 @@
+# RUST
+/target/
+**/*.rs.bk
+
+# IDEA
+*.iml
+.idea
