@@ -113,10 +113,10 @@ fn rewrite_resources(output_dir: &PathBuf, deployment: Deployment, cdp_build_ver
     }
     let deploy_path = env
         .get("DEPLOYMENT_PATH")
-        .map(String::as_ref)
-        .unwrap_or("deploy/apply");
+        .map(|s|format!("{}/apply", s))
+        .unwrap_or("deploy/apply".to_owned());
 
-    let entries = read_dir(deploy_path).context(format!(
+    let entries = read_dir(&deploy_path).context(format!(
         "DEPLOYMENT_PATH directory '{}' does not exist",
         deploy_path
     ))?;
