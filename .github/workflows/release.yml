@@ -23,7 +23,7 @@ jobs:
         draft: false
         prerelease: false
   build-and-upload:
-    needs: [release]
+    needs: [create-release]
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
