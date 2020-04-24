@@ -17,10 +17,16 @@ jobs:
       with:
           toolchain: stable
           override: true
+    - name: Build
+      uses: actions-rs/cargo@v1
+      with:
+        command: build
+        args: --verbose
     - name: Test
       uses: actions-rs/cargo@v1
       with:
-        command: test --verbose
+        command: test
+        args: --verbose
   release:
     if: startsWith( '${{ github.ref }}', 'v1.' )
     needs: [test]
