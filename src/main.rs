@@ -5,65 +5,23 @@ extern crate serde_derive;
 extern crate serde_yaml;
 extern crate structopt;
 
+use std::collections::BTreeMap;
+use std::fs::File;
+use std::fs::{create_dir_all, read_dir, read_to_string};
+use std::io::BufReader;
+use std::path::PathBuf;
+
 use exitfailure::ExitFailure;
 use failure::err_msg;
 use failure::Error;
 use failure::ResultExt;
 use serde_yaml::Value;
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-use std::fs::File;
-use std::fs::{create_dir_all, read_dir, read_to_string};
-use std::io::BufReader;
-use std::path::PathBuf;
 use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-#[structopt(
-    name = "mister",
-    about = "Creates a directory for each microservice_standard_deployment process in a CDP delivery.yaml"
-)]
-struct Opt {
-    #[structopt(
-        short = "d",
-        long = "delivery-yaml",
-        parse(from_os_str),
-        default_value = "delivery.yaml"
-    )]
-    delivery_yaml: PathBuf,
-    #[structopt(
-        short = "o",
-        long = "output-dir",
-        parse(from_os_str),
-        default_value = "mister"
-    )]
-    output_dir: PathBuf,
+use model::Deployment;
+use model::Opt;
 
-    #[structopt(
-    short = "b",
-    long = "cdp-build-version",
-    default_value = "#{CDP_BUILD_VERSION}"
-    )]
-    cdp_build_version: String,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct ApplyResources {
-    env: HashMap<String, String>,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct DeploymentConfig {
-    apply_permanent_resources: Option<ApplyResources>,
-
-    apply_manifests: Option<ApplyResources>,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-struct Deployment {
-    id: String,
-    config: DeploymentConfig,
-}
+mod model;
 
 fn main() -> Result<(), ExitFailure> {
     let opt = Opt::from_args();
@@ -100,7 +58,11 @@ fn main() -> Result<(), ExitFailure> {
     Ok(())
 }
 
-fn rewrite_resources(output_dir: &PathBuf, deployment: Deployment, cdp_build_version: &str) -> Result<(), Error> {
+fn rewrite_resources(
+    output_dir: &PathBuf,
+    deployment: Deployment,
+    cdp_build_version: &str,
+) -> Result<(), Error> {
     let config = deployment.config;
     let mut env = config
         .apply_permanent_resources
@@ -113,7 +75,7 @@ fn rewrite_resources(output_dir: &PathBuf, deployment: Deployment, cdp_build_ver
     }
     let deploy_path = env
         .get("DEPLOYMENT_PATH")
-        .map(|s|format!("{}/apply", s))
+        .map(|s| format!("{}/apply", s))
         .unwrap_or("deploy/apply".to_owned());
 
     let entries = read_dir(&deploy_path).context(format!(
