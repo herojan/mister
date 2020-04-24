@@ -42,7 +42,7 @@ jobs:
         command: build
         args: --release
     - name: Upload Release Binary Linux/Mac
-      if: contains(matrix.os, 'ubuntu') || contains(matrix.os, 'macos')
+      if: "!contains(matrix.os, 'windows')"
       id: upload-release-binary
       uses: actions/upload-release-asset@v1
       env:
@@ -50,7 +50,7 @@ jobs:
       with:
         upload_url: ${{ needs.create-release.outputs.upload_url }}
         asset_path: ./target/release/mister
-        asset_name: "mister-${{github.ref}}-${{ matrix.os }}"
+        asset_name: "mister-${{ runner.os }}"
         asset_content_type: application/binary
     - name: Upload Release Binary Windows
       if: contains(matrix.os, 'windows')
@@ -61,5 +61,5 @@ jobs:
       with:
         upload_url: ${{ needs.create-release.outputs.upload_url }}
         asset_path: ./target/release/mister.exe
-        asset_name: "mister-${{github.ref}}-${{ matrix.os }}"
+        asset_name: "mister-${{ runner.os }}"
         asset_content_type: application/binary
