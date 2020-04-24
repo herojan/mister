@@ -19,9 +19,12 @@ jobs:
           override: true
     - uses: actions-rs/cargo@v1
       with:
-        command: test
+        command: build --verbose
+    - uses: actions-rs/cargo@v1
+      with:
+        command: test --verbose
   release:
-    if: startsWith( ${{ github.ref }}, 'v1.' )
+    if: startsWith( '${{ github.ref }}', 'v1.' )
     needs: [test]
     runs-on: ubuntu-latest
     outputs:
