@@ -2,12 +2,12 @@ extern crate assert_cmd;
 extern crate predicates;
 extern crate tempfile;
 
+use std::error::Error as StdError;
 use std::process::Command;
 
 use assert_cmd::assert::OutputAssertExt;
 use assert_cmd::prelude::CommandCargoExt;
 use predicates::str::contains;
-use std::error::Error as StdError;
 use tempfile::TempDir;
 
 #[test]
@@ -25,7 +25,7 @@ fn file_doesnt_exist() -> Result<(), Box<dyn StdError>> {
 fn mister_happy_path() -> Result<(), Box<dyn StdError>> {
     let output_dir = TempDir::new()?;
     let mut cmd = Command::main_binary()?;
-    cmd.current_dir("tests");
+    cmd.current_dir("tests/fixtures");
     cmd.arg("-o")
         .arg(output_dir.path())
         .arg("-d")
