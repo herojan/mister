@@ -40,12 +40,18 @@ pub struct ApplyResources {
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct DeploymentConfig {
     pub apply_permanent_resources: Option<ApplyResources>,
-
     pub apply_manifests: Option<ApplyResources>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct Deployment {
+pub struct PipelineStep {
     pub id: String,
-    pub config: DeploymentConfig,
+    pub process: Option<String>,
+    pub config: Option<DeploymentConfig>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct Delivery {
+    pub version: String,
+    pub pipeline: Vec<PipelineStep>,
 }

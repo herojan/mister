@@ -5,9 +5,8 @@ extern crate serde_derive;
 extern crate serde_yaml;
 extern crate structopt;
 
-use std::collections::BTreeMap;
-use std::fs::File;
 use std::fs::{create_dir_all, read_dir, read_to_string};
+use std::fs::{File, ReadDir};
 use std::io::BufReader;
 use std::path::PathBuf;
 
@@ -15,13 +14,20 @@ use exitfailure::ExitFailure;
 use failure::err_msg;
 use failure::Error;
 use failure::ResultExt;
-use serde_yaml::Value;
 use structopt::StructOpt;
 
-use model::Deployment;
 use model::Opt;
+use model::{Delivery, DeploymentConfig};
+use std::collections::HashMap;
 
 mod model;
+
+/**
+steps
+1. load yaml
+2. parse to structs
+3. For each struct
+*/
 
 fn main() -> Result<(), ExitFailure> {
     let opt = Opt::from_args();
@@ -31,74 +37,59 @@ fn main() -> Result<(), ExitFailure> {
 
     let delivery_yaml = File::open(&delivery_yaml_opt)?;
     let delivery_yaml = BufReader::new(&delivery_yaml);
-    let delivery_yaml: BTreeMap<String, Value> = serde_yaml::from_reader(delivery_yaml)?;
+    let delivery_yaml: Delivery = serde_yaml::from_reader(delivery_yaml)?;
 
-    let pipeline = delivery_yaml
-        .get("pipeline")
-        .ok_or(err_msg(format!(
-            "Missing pipeline key in delivery yaml file '{:#?}'",
-            delivery_yaml_opt
-        )))?
-        .as_sequence()
-        .ok_or(err_msg(format!(
-            "Pipeline must be an array in delivery yaml file '{:#?}'",
-            delivery_yaml_opt
-        )))?;
+    for step in delivery_yaml.pipeline {
+        let step_id = step.id;
+        let config = step
+            .process
+            .filter(|p| {
+                p == "microservice_standard_deployment" || p == "microservice_standard_test"
+            })
+            .and(step.config);
 
-    let (pipeline, errors) = parse_pipeline_steps(pipeline);
+        if let Some(config) = config {
+            let env = parse_env(config, &cdp_build_version_opt)?;
+            let output_dir = &output_dir_opt;
 
-    for error in errors {
-        println!("{}", error);
-    }
-
-    for deployment in pipeline {
-        rewrite_resources(&output_dir_opt, deployment, &cdp_build_version_opt)?;
+            rewrite_resources(&output_dir.join(step_id), env)?;
+        } else {
+            println!("Skipping pipeline step with id '{}'", step_id)
+        }
     }
 
     Ok(())
 }
 
-fn rewrite_resources(
-    output_dir: &PathBuf,
-    deployment: Deployment,
+fn parse_env(
+    config: DeploymentConfig,
     cdp_build_version: &str,
-) -> Result<(), Error> {
-    let config = deployment.config;
+) -> Result<HashMap<String, String>, ExitFailure> {
     let mut env = config
-        .apply_permanent_resources
-        .or(config.apply_manifests)
-        .ok_or(err_msg("deployment config must contain either 'apply_permanent_resources' or 'apply_manifests'"))?
-        .env;
+        .apply_manifests
+        .xor(config.apply_permanent_resources)
+        .ok_or(err_msg("deployment step with id '{}' must contain either 'apply_permanent_resources' or 'apply_manifests'"))?.env;
 
     for val in env.values_mut() {
         *val = val.replace("#{CDP_BUILD_VERSION}", cdp_build_version);
     }
-    let deploy_path = env
-        .get("DEPLOYMENT_PATH")
-        .map(|s| format!("{}/apply", s))
-        .unwrap_or("deploy/apply".to_owned());
+    Ok(env)
+}
 
-    let entries = read_dir(&deploy_path).context(format!(
-        "DEPLOYMENT_PATH directory '{}' does not exist",
-        deploy_path
-    ))?;
-
-    let output_dir = output_dir.join(deployment.id.as_str());
-    //    let output_path = Path::new(format!()deployment.id.as_str());
+fn rewrite_resources(output_dir: &PathBuf, env: HashMap<String, String>) -> Result<(), Error> {
     if !output_dir.exists() {
         create_dir_all(&output_dir).context(format!(
             "Could not create directory '{}'",
             output_dir.display()
         ))?;
     }
-
-    for entry in entries {
-        let entry = entry?;
-        let path = entry.path();
+    for resource in find_deploy_resources_dir(&env)? {
+        let resource = resource?;
+        let path = resource.path();
         if path.is_file() {
             let template = read_to_string(&path)?;
             let template = mustache::compile_str(&template)?;
-            let path_buf = output_dir.join(entry.file_name());
+            let path_buf = output_dir.join(resource.file_name());
             let output_file = &mut File::create(path_buf.as_path())?;
 
             template.render(output_file, &env)?;
@@ -109,23 +100,16 @@ fn rewrite_resources(
     Ok(())
 }
 
-fn parse_pipeline_steps(pipeline_values: &Vec<Value>) -> (Vec<Deployment>, Vec<serde_yaml::Error>) {
-    let (pipeline, errors): (Vec<_>, Vec<_>) = pipeline_values
-        .into_iter()
-        .filter(|v| {
-            let process_name = v.get("process").and_then(|v| v.as_str());
+fn find_deploy_resources_dir(env: &HashMap<String, String>) -> Result<ReadDir, Error> {
+    let deploy_path = env
+        .get("DEPLOYMENT_PATH")
+        .map(|s| format!("{}/apply", s))
+        .unwrap_or("deploy/apply".to_owned());
 
-            process_name
-                .filter(|&p| {
-                    p == "microservice_standard_deployment" || p == "microservice_standard_test"
-                })
-                .is_some()
-        })
-        .map(|deployment| serde_yaml::from_value::<Deployment>(deployment.to_owned()))
-        .partition(Result::is_ok);
+    let read_dir = read_dir(&deploy_path).context(format!(
+        "DEPLOYMENT_PATH directory '{}' does not exist",
+        deploy_path
+    ))?;
 
-    let pipeline = pipeline.into_iter().map(Result::unwrap).collect();
-    let errors = errors.into_iter().map(Result::unwrap_err).collect();
-
-    (pipeline, errors)
+    Ok(read_dir)
 }
