@@ -33,8 +33,8 @@ jobs:
     - name: Install latest stable Rust
       uses: actions-rs/toolchain@v1
       with:
-          toolchain: stable
-          override: true
+        toolchain: stable
+        override: true
     - name: Build Release Binary
       id: build-release-binary
       uses: actions-rs/cargo@v1
