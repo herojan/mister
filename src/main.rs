@@ -5,6 +5,7 @@ extern crate serde_derive;
 extern crate serde_yaml;
 extern crate structopt;
 
+use std::collections::HashMap;
 use std::fs::{create_dir_all, read_dir, read_to_string};
 use std::fs::{File, ReadDir};
 use std::io::BufReader;
@@ -18,16 +19,8 @@ use structopt::StructOpt;
 
 use model::Opt;
 use model::{Delivery, DeploymentConfig};
-use std::collections::HashMap;
 
 mod model;
-
-/**
-steps
-1. load yaml
-2. parse to structs
-3. For each struct
-*/
 
 fn main() -> Result<(), ExitFailure> {
     let opt = Opt::from_args();
