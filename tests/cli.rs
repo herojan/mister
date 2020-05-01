@@ -31,7 +31,7 @@ fn mister_happy_path() -> Result<(), Box<dyn StdError>> {
         .arg("-d")
         .arg("delivery.yaml")
         .arg("-b")
-        .arg("mister-5");
+        .arg("mister-6");
     cmd.assert().success();
 
     Ok(())
